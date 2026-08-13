@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Ejercicio Canvas — Cameron T</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #0d0d0f;
+  }
+  canvas {
+    display: block;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<script>
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+let width, height;
+
+// list of particles on screen
+const particles = [];
+
+function resize() {
+  width = canvas.width = window.innerWidth;
+  height = canvas.height = window.innerHeight;
+
+  // window got smaller, pull anything now off-screen back in
+  for (let i = 0; i < particles.length; i++) {
+    const p = particles[i];
+    if (p.x > width) p.x = width;
+    if (p.y > height) p.y = height;
+  }
+}
+window.addEventListener('resize', resize);
+resize();
+
+// balls bouncing side to side 
+
+const bouncingCircle = {
+  x: width / 2,
+  y: height / 2,
+  radius: 20,
+  speed: 220,          // pixels per second
+  color: '#ff6b35'
+};
+
+function updateBouncingCircle(dt) {
+  bouncingCircle.x += bouncingCircle.speed * dt;
+
+  // hit the left or right wall, change direction up
+  if (bouncingCircle.x - bouncingCircle.radius <= 0) {
+    bouncingCircle.x = bouncingCircle.radius;
+    bouncingCircle.speed *= -1;
+  } else if (bouncingCircle.x + bouncingCircle.radius >= width) {
+    bouncingCircle.x = width - bouncingCircle.radius;
+    bouncingCircle.speed *= -1;
+  }
+}
+
+//ball that follows the mouse WITH LAG!!
+
+const mouse = { x: width / 2, y: height / 2 };
+window.addEventListener('mousemove', (e) => {
+  mouse.x = e.clientX;
+  mouse.y = e.clientY;
+});
+
+const followerCircle = {
+  x: width / 2,
+  y: height / 2,
+  radius: 16,
+  color: '#4ecdc4'
+};
+
+const smoothing = 0.12; // smaller number = snappier follow, bigger = laggier !!!! 
+
+function updateFollowerCircle(dt) {
+  // this makes the follow speed feel the same no matter the framerate (Chat GPT helped me with this one)
+  const catchUp = 1 - Math.pow(0.5, dt / smoothing);
+  followerCircle.x += (mouse.x - followerCircle.x) * catchUp;
+  followerCircle.y += (mouse.y - followerCircle.y) * catchUp;
+}
+
+function drawCircle(c) {
+  ctx.beginPath();
+  ctx.arc(c.x, c.y, c.radius, 0, Math.PI * 2);
+  ctx.fillStyle = c.color;
+  ctx.fill();
+}
+
+// bunch of particles, two types 
+const config = {
+  particleCount:15000,
+  proportions: {              // how many of each type, should add up to 1
+    light: 0.7,
+    heavy: 0.3
+  },
+  speedRange: {                 // pixels per second
+    light: [30, 80],
+    heavy: [10, 30]
+  },
+  radiusRange: {                // how big each dot is
+    light: [1, 2],
+    heavy: [3, 5]
+  },
+  alphaRange: {                 // how see-through each dot is
+    light: [0.15, 0.45],
+    heavy: [0.5, 0.85]
+  },
+  color: {
+    light: '#ffffff',
+    heavy: '#ff6b35'
+  },
+  bounce: {                     // how much speed survives a wall hit, 1 = none lost
+    light: 1,
+    heavy: 0.55
+  },
+  gravity: 12                   // pulls heavy particles down, light won't do it tho
+};
+
+function randomBetween([min, max]) {
+  return min + Math.random() * (max - min);
+}
+
+function makeParticle(type) {
+  const speed = randomBetween(config.speedRange[type]);
+  const angle = Math.random() * Math.PI * 2;
+  return {
+    type,
+    x: Math.random() * width,
+    y: Math.random() * height,
+    vx: Math.cos(angle) * speed,
+    vy: Math.sin(angle) * speed,
+    radius: randomBetween(config.radiusRange[type]),
+    alpha: randomBetween(config.alphaRange[type]),
+    color: config.color[type],
+    bounce: config.bounce[type]
+  };
+}
+
+function initParticles() {
+  particles.length = 0;
+
+  // split particleCount across types by proportion, last type takes the leftover
+  // so the total always adds up exactly even with rounding
+  const types = Object.keys(config.proportions);
+  const counts = {};
+  let assigned = 0;
+
+  types.forEach((type, i) => {
+    if (i === types.length - 1) {
+      counts[type] = config.particleCount - assigned;
+    } else {
+      counts[type] = Math.round(config.particleCount * config.proportions[type]);
+      assigned += counts[type];
+    }
+  });
+
+  types.forEach((type) => {
+    for (let i = 0; i < counts[type]; i++) {
+      particles.push(makeParticle(type));
+    }
+  });
+}
+initParticles();
+
+// bounce function used for both x and y, instead of writing it twice (hope this works)
+function bounce(p, pos, vel, max) {
+  if (p[pos] - p.radius <= 0) {
+    p[pos] = p.radius;
+    p[vel] *= -p.bounce;
+  } else if (p[pos] + p.radius >= max) {
+    p[pos] = max - p.radius;
+    p[vel] *= -p.bounce;
+  }
+}
+
+function updateParticles(dt) {
+  for (let i = 0; i < particles.length; i++) {
+    const p = particles[i];
+
+    // this is what makes heavy particles fall while light ones just float around town
+    if (p.type === 'heavy') {
+      p.vy += config.gravity * dt;
+    }
+
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+
+    bounce(p, 'x', 'vx', width);
+    bounce(p, 'y', 'vy', height);
+  }
+}
+
+function drawParticles() {
+  for (let i = 0; i < particles.length; i++) {
+    const p = particles[i];
+    ctx.globalAlpha = p.alpha;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+
+let lastTime = performance.now();
+
+function loop(now) {
+  let dt = (now - lastTime) / 1000;
+  lastTime = now;
+  dt = Math.min(dt, 0.05); // stops everything from jumping after a lag spike (chat also helped here thank u open ai)
+
+  ctx.clearRect(0, 0, width, height);
+
+  updateParticles(dt);
+  drawParticles();
+
+  updateBouncingCircle(dt);
+  updateFollowerCircle(dt);
+
+  drawCircle(bouncingCircle);
+  drawCircle(followerCircle);
+
+  requestAnimationFrame(loop);
+}
+
+requestAnimationFrame(loop);
+
+</script>
+
+</body>
+</html>
