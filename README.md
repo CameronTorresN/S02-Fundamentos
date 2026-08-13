@@ -8,7 +8,8 @@ _**GUÍA IA:**_
 ## Qué puse en config y qué dejé fuera a propósito
   Adentro: particleCount, proportions, speedRange, radiusRange, alphaRange, color, bounce, gravity — todo lo que describe cómo se ve y actúa el sistema de " partículas"
 
-Fuera, a propósito:
+Afuera: 
+
 - bouncingCircle y followerCircle (su speed, radius, smoothing) — el brief pedía específicamente cantidad/tamaños/velocidades/paleta/rebote de partículas. Meter ahí los círculos individuales habría mezclado dos cosas que no comparten forma (no tienen tipos, no cambian por instancia).
   
 - width / height — no son configuración Cambian solos en resize().
