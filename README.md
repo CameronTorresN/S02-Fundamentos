@@ -21,3 +21,11 @@ Tres lugares:
 - makeParticle() — casi hice makeLightParticle() y makeHeavyParticle() como funciones con los mismos campos y distintos números hardcoded. entonces mejor hice makeParticle(type) que jala sus rangos.
 
 - initParticles() — pude haber escrito "haz 350 ligeras" y "haz 150 pesadas" como dos loops con números fijos. Mejor busqué que calculara counts a partir de proportions, así nunca hay que volver a escribir nada si cambias el porcentaje (Aquí también le pedí a chat un poco de guía de como podríâ hacer esto).
+
+## Expermiento de Frame Rate
+
+Intenté esto desde 1,000 partículas. Mi frame rate inicial era 120 FPS. Después, Empezó a caer en 40,000 partículas a 114 FPS, y de ahí siguió bajando hasta que en 112,000 FPS cayó a 60 FPS.
+
+
+
+
